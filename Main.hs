@@ -1,7 +1,7 @@
 module Main where
 
-import Data.Char
 import Control.Applicative
+import Data.Char
 
 data JsonValue
   = JsonNull
@@ -33,8 +33,7 @@ instance Applicative Parser where
 
 instance Alternative Parser where
   empty = Parser $ const Nothing
-  (Parser p1) <|> (Parser p2) =
-      Parser $ \input -> p1 input <|> p2 input
+  (Parser p1) <|> (Parser p2) = Parser $ \input -> p1 input <|> p2 input
 
 jsonNull :: Parser JsonValue
 jsonNull = JsonNull <$ stringP "null"
@@ -52,8 +51,9 @@ stringP = traverse charP
 
 jsonBool :: Parser JsonValue
 jsonBool = jsonTrue <|> jsonFalse
-   where jsonTrue  = JsonBool True <$ stringP "true"
-         jsonFalse = JsonBool False <$ stringP "false"
+  where
+    jsonTrue = JsonBool True <$ stringP "true"
+    jsonFalse = JsonBool False <$ stringP "false"
 
 spanP :: (Char -> Bool) -> Parser String
 spanP f =
@@ -71,7 +71,8 @@ notNull (Parser p) =
 
 jsonNumber :: Parser JsonValue
 jsonNumber = f <$> notNull (spanP isDigit)
-    where f ds = JsonNumber $ read ds
+  where
+    f ds = JsonNumber $ read ds
 
 -- NOTE: no escape support
 stringLiteral :: Parser String
@@ -87,15 +88,14 @@ sepBy :: Parser a -> Parser b -> Parser [b]
 sepBy sep element = (:) <$> element <*> many (sep *> element) <|> pure []
 
 jsonArray :: Parser JsonValue
-jsonArray = JsonArray <$> (charP '[' *> ws *>
-                           elements
-                           <* ws <* charP ']')
+jsonArray = JsonArray <$> (charP '[' *> ws *> elements <* ws <* charP ']')
   where
     elements = sepBy (ws *> charP ',' <* ws) jsonValue
 
 jsonObject :: Parser JsonValue
 jsonObject =
-  JsonObject <$> (charP '{' *> ws *> sepBy (ws *> charP ',' <* ws) pair <* ws <* charP '}')
+  JsonObject <$>
+  (charP '{' *> ws *> sepBy (ws *> charP ',' <* ws) pair <* ws <* charP '}')
   where
     pair =
       (\key _ value -> (key, value)) <$> stringLiteral <*>
@@ -103,7 +103,9 @@ jsonObject =
       jsonValue
 
 jsonValue :: Parser JsonValue
-jsonValue = jsonNull <|> jsonBool <|> jsonNumber <|> jsonString <|> jsonArray <|> jsonObject
+jsonValue =
+  jsonNull <|> jsonBool <|> jsonNumber <|> jsonString <|> jsonArray <|>
+  jsonObject
 
 parseFile :: FilePath -> Parser a -> IO (Maybe a)
 parseFile fileName parser = do
