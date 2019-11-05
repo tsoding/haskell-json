@@ -32,12 +32,12 @@ instance Applicative Parser where
       Just (input'', f a)
 
 instance Alternative Parser where
-  empty = Parser $ \_ -> Nothing
+  empty = Parser $ const Nothing
   (Parser p1) <|> (Parser p2) =
       Parser $ \input -> p1 input <|> p2 input
 
 jsonNull :: Parser JsonValue
-jsonNull = (\_ -> JsonNull) <$> stringP "null"
+jsonNull = JsonNull <$ stringP "null"
 
 charP :: Char -> Parser Char
 charP x = Parser f
@@ -48,7 +48,7 @@ charP x = Parser f
     f [] = Nothing
 
 stringP :: String -> Parser String
-stringP = sequenceA . map charP
+stringP = traverse charP
 
 jsonBool :: Parser JsonValue
 jsonBool = jsonTrue <|> jsonFalse
