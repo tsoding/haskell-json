@@ -52,9 +52,8 @@ stringP = sequenceA . map charP
 
 jsonBool :: Parser JsonValue
 jsonBool = jsonTrue <|> jsonFalse
-   where mkJsonBool str b = const (JsonBool b) <$> stringP str
-         jsonTrue = mkJsonBool "true" True
-         jsonFalse = mkJsonBool "false" False
+   where jsonTrue  = JsonBool True <$ stringP "true"
+         jsonFalse = JsonBool False <$ stringP "false"
 
 spanP :: (Char -> Bool) -> Parser String
 spanP f =
