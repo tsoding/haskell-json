@@ -2,6 +2,7 @@ module Main where
 
 import Control.Applicative
 import Data.Char
+import System.Exit
 
 data JsonValue
   = JsonNull
@@ -110,4 +111,42 @@ parseFile fileName parser = do
   return (snd <$> runParser parser input)
 
 main :: IO ()
-main = undefined
+main = do
+  putStrLn "[INFO] JSON:"
+  putStrLn testJsonText
+  case runParser jsonValue testJsonText of
+    Just (input, actualJsonAst) -> do
+      putStrLn ("[INFO] Parsed as: " <> show actualJsonAst)
+      putStrLn ("[INFO] Remaining input (codes): " <> show (map ord input))
+      if actualJsonAst == expectedJsonAst
+        then putStrLn "[SUCCESS] Parser produced expected result."
+        else do
+          putStrLn
+            ("[ERROR] Parser produced unexpected result. Expected result was: " <>
+             show expectedJsonAst)
+          exitFailure
+    Nothing -> do
+      putStrLn "[ERROR] Parser failed and didn't produce any output."
+      exitFailure
+  where
+    testJsonText =
+      unlines
+        [ "{"
+        , "    \"hello\": [false, true, null, 42, \"foo\", [1, 2, 3, 4]],"
+        , "    \"world\": null"
+        , "}"
+        ]
+    expectedJsonAst =
+      JsonObject
+        [ ( "hello"
+          , JsonArray
+              [ JsonBool False
+              , JsonBool True
+              , JsonNull
+              , JsonNumber 42
+              , JsonString "foo"
+              , JsonArray
+                  [JsonNumber 1, JsonNumber 2, JsonNumber 3, JsonNumber 4]
+              ])
+        , ("world", JsonNull)
+        ]
