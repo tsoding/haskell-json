@@ -97,10 +97,7 @@ jsonObject =
   JsonObject <$>
   (charP '{' *> ws *> sepBy (ws *> charP ',' <* ws) pair <* ws <* charP '}')
   where
-    pair =
-      (\key _ value -> (key, value)) <$> stringLiteral <*>
-      (ws *> charP ':' <* ws) <*>
-      jsonValue
+    pair = liftA2 (,) (stringLiteral <* ws <* charP ':' <* ws) jsonValue
 
 jsonValue :: Parser JsonValue
 jsonValue =
