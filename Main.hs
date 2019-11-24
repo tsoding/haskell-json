@@ -74,13 +74,12 @@ parseIf f =
       | f y -> Just (ys, y)
     _ -> Nothing
 
-jsonNumber :: Parser JsonValue
-jsonNumber = JsonNumber . read <$> numberP
+jsonNumber = f <$> maybeSign <*> integer <*> maybeDecimal
   where
-    numberP =
-      ((:) <$> charP '-' <|> pure id) <*>
-      ((++) <$> spanP1 isDigit <*>)
-        (((:) <$> charP '.' <*> spanP isDigit) <|> pure [])
+    f sign i d = JsonNumber . read $ sign ++ i ++ d
+    maybeSign = stringP "-" <|> pure " "
+    integer = spanP1 isDigit
+    maybeDecimal = ((:) <$> charP '.' <*> spanP1 isDigit) <|> pure ""
 
 escapeUnicode :: Parser Char
 escapeUnicode =
