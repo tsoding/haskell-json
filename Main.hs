@@ -77,9 +77,10 @@ parseIf f =
 jsonNumber :: Parser JsonValue
 jsonNumber = JsonNumber . read <$> numberP
   where
-    numberP = ((:) <$> charP '-' <|> pure id) <*>
+    numberP =
+      ((:) <$> charP '-' <|> pure id) <*>
       ((++) <$> spanP1 isDigit <*>)
-      (((:) <$> charP '.' <*> spanP isDigit) <|> pure [])
+        (((:) <$> charP '.' <*> spanP isDigit) <|> pure [])
 
 escapeUnicode :: Parser Char
 escapeUnicode =
@@ -155,7 +156,7 @@ main = do
     testJsonText =
       unlines
         [ "{"
-        , "    \"hello\": [false, true, null, 42.5, \"foo\\n\\u1234\\\"\", [1, 2, 3, 4]],"
+        , "    \"hello\": [false, true, null, 42.5, \"foo\\n\\u1234\\\"\", [-1, -2.2, 3, 4]],"
         , "    \"world\": null"
         , "}"
         ]
