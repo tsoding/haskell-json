@@ -48,7 +48,6 @@ charP x = Parser f
   where
     f (y:ys)
       | y == x = Just (ys, x)
-      | otherwise = Nothing
     f [] = Nothing
 
 stringP :: String -> Parser String
