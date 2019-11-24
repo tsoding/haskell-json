@@ -170,7 +170,7 @@ main = do
               , JsonNumber 42.5
               , JsonString "foo\n\4660\""
               , JsonArray
-                  [JsonNumber 1, JsonNumber 2, JsonNumber 3, JsonNumber 4]
+                  [JsonNumber (-1), JsonNumber (-2.2), JsonNumber 3, JsonNumber 4]
               ])
         , ("world", JsonNull)
         ]
