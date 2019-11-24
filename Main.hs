@@ -2,6 +2,7 @@ module Main where
 
 import           Control.Applicative
 import           Data.Char
+import           Data.Functor (($>))
 import           Data.Semigroup
 import           System.Exit
 
@@ -71,9 +72,7 @@ parseIf f =
       _          -> Nothing
 
 jsonNumber :: Parser JsonValue
-jsonNumber = f <$> spanP1 isDigit
-  where
-    f ds = JsonNumber $ read ds
+jsonNumber = JsonNumber <$> ((charP '-' $> (*(-1)) <|> pure id) <*> (read <$> spanP1 isDigit))
 
 -- NOTE: no escape support
 stringLiteral :: Parser String
@@ -132,7 +131,7 @@ main = do
     testJsonText =
       unlines
         [ "{"
-        , "    \"hello\": [false, true, null, 42, \"foo\", [1, 2, 3, 4]],"
+        , "    \"hello\": [false, true, null, 42, \"foo\", [1, 2, 3, -4]],"
         , "    \"world\": null"
         , "}"
         ]
@@ -146,7 +145,7 @@ main = do
               , JsonNumber 42
               , JsonString "foo"
               , JsonArray
-                  [JsonNumber 1, JsonNumber 2, JsonNumber 3, JsonNumber 4]
+                  [JsonNumber 1, JsonNumber 2, JsonNumber 3, JsonNumber (-4)]
               ])
         , ("world", JsonNull)
         ]
