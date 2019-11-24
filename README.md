@@ -14,3 +14,7 @@ viewers! The original code from the video can be found in commit
 ```console
 $ runghc Main.hs
 ```
+
+## Contribution Notes
+
+- Pull Requests that do not add any new functionality to the parser will be rejected without any further discussion. Examples are refactoring, renaming, reformating, restyling, etc. Sorry for any inconveniences.
