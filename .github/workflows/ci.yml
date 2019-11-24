@@ -10,6 +10,7 @@ jobs:
       with:
         ghc-version: '8.6.5' # Exact version of ghc to use
         cabal-version: '3.0'
-    - run: runghc Main.hs
+    - run: cabal update
     - run: cabal install hlint
+    - run: runghc Main.hs
     - run: hlint .
