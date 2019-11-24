@@ -3,6 +3,7 @@ module Main where
 import           Control.Applicative
 import           Data.Char
 import           Data.Semigroup
+import           Numeric
 import           System.Exit
 
 data JsonValue
@@ -75,9 +76,25 @@ jsonNumber = f <$> spanP1 isDigit
   where
     f ds = JsonNumber $ read ds
 
--- NOTE: no escape support
+escapeUnicode :: Parser Char
+escapeUnicode = chr . fst . head . readHex <$> sequenceA (replicate 4 (parseIf isHexDigit))
+
+escapeChar :: Parser Char
+escapeChar = ('"' <$ stringP "\\\"") <|>
+             ('\\' <$ stringP "\\\\") <|>
+             ('/' <$ stringP "\\/") <|>
+             ('\b' <$ stringP "\\b") <|>
+             ('\f' <$ stringP "\\f") <|>
+             ('\n' <$ stringP "\\n") <|>
+             ('\r' <$ stringP "\\r") <|>
+             ('\t' <$ stringP "\\t") <|>
+             (stringP "\\u" *> escapeUnicode)
+
+normalChar :: Parser Char
+normalChar = parseIf ((&&) <$> (/= '"') <*> (/= '\\'))
+
 stringLiteral :: Parser String
-stringLiteral = charP '"' *> spanP (/= '"') <* charP '"'
+stringLiteral = charP '"' *> many (normalChar <|> escapeChar) <* charP '"'
 
 jsonString :: Parser JsonValue
 jsonString = JsonString <$> stringLiteral
@@ -132,7 +149,7 @@ main = do
     testJsonText =
       unlines
         [ "{"
-        , "    \"hello\": [false, true, null, 42, \"foo\", [1, 2, 3, 4]],"
+        , "    \"hello\": [false, true, null, 42, \"foo\\n\\u1234\\\"\", [1, 2, 3, 4]],"
         , "    \"world\": null"
         , "}"
         ]
@@ -144,7 +161,7 @@ main = do
               , JsonBool True
               , JsonNull
               , JsonNumber 42
-              , JsonString "foo"
+              , JsonString "foo\n\4660\""
               , JsonArray
                   [JsonNumber 1, JsonNumber 2, JsonNumber 3, JsonNumber 4]
               ])
