@@ -1,9 +1,12 @@
+{-# LANGUAGE LambdaCase #-}
+
 module Main where
 
 import           Control.Applicative
 import           Data.Char
 import           Data.Functor (($>))
 import           Data.Semigroup
+import           Numeric
 import           System.Exit
 
 data JsonValue
@@ -66,17 +69,33 @@ spanP1 = some . parseIf
 
 parseIf :: (Char -> Bool) -> Parser Char
 parseIf f =
-  Parser $ \input ->
-    case input of
-      y:ys | f y -> Just (ys, y)
-      _          -> Nothing
+  Parser $ \case
+    y:ys
+      | f y -> Just (ys, y)
+    _ -> Nothing
 
 jsonNumber :: Parser JsonValue
 jsonNumber = JsonNumber <$> ((charP '-' $> (*(-1)) <|> pure id) <*> (read <$> spanP1 isDigit))
 
--- NOTE: no escape support
+escapeUnicode :: Parser Char
+escapeUnicode = chr . fst . head . readHex <$> sequenceA (replicate 4 (parseIf isHexDigit))
+
+escapeChar :: Parser Char
+escapeChar = ('"' <$ stringP "\\\"") <|>
+             ('\\' <$ stringP "\\\\") <|>
+             ('/' <$ stringP "\\/") <|>
+             ('\b' <$ stringP "\\b") <|>
+             ('\f' <$ stringP "\\f") <|>
+             ('\n' <$ stringP "\\n") <|>
+             ('\r' <$ stringP "\\r") <|>
+             ('\t' <$ stringP "\\t") <|>
+             (stringP "\\u" *> escapeUnicode)
+
+normalChar :: Parser Char
+normalChar = parseIf ((&&) <$> (/= '"') <*> (/= '\\'))
+
 stringLiteral :: Parser String
-stringLiteral = charP '"' *> spanP (/= '"') <* charP '"'
+stringLiteral = charP '"' *> many (normalChar <|> escapeChar) <* charP '"'
 
 jsonString :: Parser JsonValue
 jsonString = JsonString <$> stringLiteral
@@ -131,7 +150,7 @@ main = do
     testJsonText =
       unlines
         [ "{"
-        , "    \"hello\": [false, true, null, 42, \"foo\", [1, 2, 3, -4]],"
+        , "    \"hello\": [false, true, null, 42, \"foo\\n\\u1234\\\"\", [1, 2, 3, -4]],"
         , "    \"world\": null"
         , "}"
         ]
@@ -143,7 +162,7 @@ main = do
               , JsonBool True
               , JsonNull
               , JsonNumber 42
-              , JsonString "foo"
+              , JsonString "foo\n\4660\""
               , JsonArray
                   [JsonNumber 1, JsonNumber 2, JsonNumber 3, JsonNumber (-4)]
               ])
