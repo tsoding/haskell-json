@@ -2,25 +2,26 @@
 
 module Main where
 
-import           Control.Applicative
-import           Data.Char
-import           Data.Semigroup
-import           Numeric
-import           System.Exit
+import Control.Applicative
+import Data.Char
+import Data.Semigroup
+import Numeric
+import System.Exit
 
 data JsonValue
   = JsonNull
   | JsonBool Bool
-  | JsonNumber Integer -- NOTE: no support for floats
+  | JsonNumber Double
   | JsonString String
   | JsonArray [JsonValue]
   | JsonObject [(String, JsonValue)]
   deriving (Show, Eq)
 
 -- NOTE: no proper error reporting
-newtype Parser a = Parser
-  { runParser :: String -> Maybe (String, a)
-  }
+newtype Parser a =
+  Parser
+    { runParser :: String -> Maybe (String, a)
+    }
 
 instance Functor Parser where
   fmap f (Parser p) =
@@ -74,23 +75,26 @@ parseIf f =
     _ -> Nothing
 
 jsonNumber :: Parser JsonValue
-jsonNumber = f <$> spanP1 isDigit
+jsonNumber = JsonNumber . read <$> (floatNumber <|> intNumber)
   where
-    f ds = JsonNumber $ read ds
+    intNumber = spanP1 isDigit
+    floatNumber = (++) <$> intNumber <*> ((:) <$> charP '.' <*> spanP isDigit)
+
 
 escapeUnicode :: Parser Char
-escapeUnicode = chr . fst . head . readHex <$> sequenceA (replicate 4 (parseIf isHexDigit))
+escapeUnicode =
+  chr . fst . head . readHex <$> sequenceA (replicate 4 (parseIf isHexDigit))
 
 escapeChar :: Parser Char
-escapeChar = ('"' <$ stringP "\\\"") <|>
-             ('\\' <$ stringP "\\\\") <|>
-             ('/' <$ stringP "\\/") <|>
-             ('\b' <$ stringP "\\b") <|>
-             ('\f' <$ stringP "\\f") <|>
-             ('\n' <$ stringP "\\n") <|>
-             ('\r' <$ stringP "\\r") <|>
-             ('\t' <$ stringP "\\t") <|>
-             (stringP "\\u" *> escapeUnicode)
+escapeChar =
+  ('"' <$ stringP "\\\"") <|> ('\\' <$ stringP "\\\\") <|>
+  ('/' <$ stringP "\\/") <|>
+  ('\b' <$ stringP "\\b") <|>
+  ('\f' <$ stringP "\\f") <|>
+  ('\n' <$ stringP "\\n") <|>
+  ('\r' <$ stringP "\\r") <|>
+  ('\t' <$ stringP "\\t") <|>
+  (stringP "\\u" *> escapeUnicode)
 
 normalChar :: Parser Char
 normalChar = parseIf ((&&) <$> (/= '"') <*> (/= '\\'))
@@ -151,7 +155,7 @@ main = do
     testJsonText =
       unlines
         [ "{"
-        , "    \"hello\": [false, true, null, 42, \"foo\\n\\u1234\\\"\", [1, 2, 3, 4]],"
+        , "    \"hello\": [false, true, null, 42.5, \"foo\\n\\u1234\\\"\", [1, 2, 3, 4]],"
         , "    \"world\": null"
         , "}"
         ]
@@ -162,7 +166,7 @@ main = do
               [ JsonBool False
               , JsonBool True
               , JsonNull
-              , JsonNumber 42
+              , JsonNumber 42.5
               , JsonString "foo\n\4660\""
               , JsonArray
                   [JsonNumber 1, JsonNumber 2, JsonNumber 3, JsonNumber 4]
