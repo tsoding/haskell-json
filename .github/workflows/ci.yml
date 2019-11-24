@@ -12,6 +12,5 @@ jobs:
         cabal-version: '3.0'
     - run: wget https://github.com/ndmitchell/hlint/releases/download/v2.2.4/hlint-2.2.4-x86_64-linux.tar.gz
     - run: tar fvx hlint-2.2.4-x86_64-linux.tar.gz
-    - run: ldd ./hlint-2.2.4/hlint
     - run: runghc Main.hs
     - run: ./hlint-2.2.4/hlint .
