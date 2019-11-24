@@ -10,7 +10,8 @@ jobs:
       with:
         ghc-version: '8.6.5' # Exact version of ghc to use
         cabal-version: '3.0'
-    - run: cabal update
-    - run: cabal install hlint
+    - run: wget https://github.com/ndmitchell/hlint/releases/download/v2.2.4/hlint-2.2.4-x86_64-linux.tar.gz
+    - run: tar fvx hlint-2.2.4-x86_64-linux.tar.gz
+    - run: ldd ./hlint-2.2.4/hlint
     - run: runghc Main.hs
-    - run: hlint .
+    - run: ./hlint-2.2.4/hlint .
