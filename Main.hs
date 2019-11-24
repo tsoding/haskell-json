@@ -1,3 +1,5 @@
+{-# LANGUAGE LambdaCase #-}
+
 module Main where
 
 import           Control.Applicative
@@ -67,9 +69,10 @@ spanP1 = some . parseIf
 parseIf :: (Char -> Bool) -> Parser Char
 parseIf f =
   Parser $ \input ->
-    case input of
-      y:ys | f y -> Just (ys, y)
-      _          -> Nothing
+    \case
+      y:ys
+        | f y -> Just (ys, y)
+      _ -> Nothing
 
 jsonNumber :: Parser JsonValue
 jsonNumber = f <$> spanP1 isDigit
