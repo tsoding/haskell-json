@@ -18,33 +18,33 @@ data JsonValue
   deriving (Show, Eq)
 
 -- NOTE: no proper error reporting
-newtype Parser a = Parser
+newtype Parser a = MkParser
   { runParser :: String -> Maybe (String, a)
   }
 
 instance Functor Parser where
-  fmap f (Parser p) =
-    Parser $ \input -> do
+  fmap f (MkParser p) =
+    MkParser $ \input -> do
       (input', x) <- p input
       Just (input', f x)
 
 instance Applicative Parser where
-  pure x = Parser $ \input -> Just (input, x)
-  (Parser p1) <*> (Parser p2) =
-    Parser $ \input -> do
+  pure x = MkParser $ \input -> Just (input, x)
+  (MkParser p1) <*> (MkParser p2) =
+    MkParser $ \input -> do
       (input', f) <- p1 input
       (input'', a) <- p2 input'
       Just (input'', f a)
 
 instance Alternative Parser where
-  empty = Parser $ const Nothing
-  (Parser p1) <|> (Parser p2) = Parser $ \input -> p1 input <|> p2 input
+  empty = MkParser $ const Nothing
+  (MkParser p1) <|> (MkParser p2) = MkParser $ \input -> p1 input <|> p2 input
 
 jsonNull :: Parser JsonValue
 jsonNull = JsonNull <$ stringP "null"
 
 charP :: Char -> Parser Char
-charP x = Parser f
+charP x = MkParser f
   where
     f (y:ys)
       | y == x = Just (ys, x)
@@ -68,7 +68,7 @@ spanP1 = some . parseIf
 
 parseIf :: (Char -> Bool) -> Parser Char
 parseIf f =
-  Parser $ \case
+  MkParser $ \case
     y:ys
       | f y -> Just (ys, y)
     _ -> Nothing
