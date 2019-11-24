@@ -75,11 +75,11 @@ parseIf f =
     _ -> Nothing
 
 jsonNumber :: Parser JsonValue
-jsonNumber = JsonNumber . read <$> (floatNumber <|> intNumber)
+jsonNumber = JsonNumber . read <$> numberP
   where
-    intNumber = spanP1 isDigit
-    floatNumber = (++) <$> intNumber <*> ((:) <$> charP '.' <*> spanP isDigit)
-
+    numberP = ((:) <$> charP '-' <|> pure id) <*>
+      ((++) <$> spanP1 isDigit <*>)
+      (((:) <$> charP '.' <*> spanP isDigit) <|> pure [])
 
 escapeUnicode :: Parser Char
 escapeUnicode =
