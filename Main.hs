@@ -5,7 +5,6 @@ module Main where
 import           Control.Applicative
 import           Data.Char
 import           Data.Maybe
-import           Data.Semigroup
 import           Data.Tuple
 import           Numeric
 import           System.Exit
