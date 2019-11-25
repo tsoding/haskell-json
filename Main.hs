@@ -47,12 +47,7 @@ jsonNull :: Parser JsonValue
 jsonNull = JsonNull <$ stringP "null"
 
 charP :: Char -> Parser Char
-charP x = Parser f
-  where
-    f (y:ys)
-      | y == x = Just (ys, x)
-      | otherwise = Nothing
-    f [] = Nothing
+charP x = parseIf (==x)
 
 stringP :: String -> Parser String
 stringP = traverse charP
