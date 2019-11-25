@@ -4,14 +4,15 @@ module Main where
 
 import           Control.Applicative
 import           Data.Char
-import           Data.Semigroup
+import           Data.Maybe
+import           Data.Tuple
 import           Numeric
 import           System.Exit
 
 data JsonValue
   = JsonNull
   | JsonBool Bool
-  | JsonNumber Integer -- NOTE: no support for floats
+  | JsonNumber Double
   | JsonString String
   | JsonArray [JsonValue]
   | JsonObject [(String, JsonValue)]
@@ -74,9 +75,7 @@ parseIf f =
     _ -> Nothing
 
 jsonNumber :: Parser JsonValue
-jsonNumber = f <$> spanP1 isDigit
-  where
-    f ds = JsonNumber $ read ds
+jsonNumber = JsonNumber <$> Parser (fmap swap . listToMaybe . reads)
 
 escapeUnicode :: Parser Char
 escapeUnicode = chr . fst . head . readHex <$> sequenceA (replicate 4 (parseIf isHexDigit))
@@ -151,7 +150,7 @@ main = do
     testJsonText =
       unlines
         [ "{"
-        , "    \"hello\": [false, true, null, 42, \"foo\\n\\u1234\\\"\", [1, 2, 3, 4]],"
+        , "    \"hello\": [false, true, null, 42, \"foo\\n\\u1234\\\"\", [1, -2, 3.1415, 4e-6, 5E6]],"
         , "    \"world\": null"
         , "}"
         ]
@@ -165,7 +164,12 @@ main = do
               , JsonNumber 42
               , JsonString "foo\n\4660\""
               , JsonArray
-                  [JsonNumber 1, JsonNumber 2, JsonNumber 3, JsonNumber 4]
+                  [ JsonNumber 1.0
+                  , JsonNumber (-2.0)
+                  , JsonNumber 3.1415
+                  , JsonNumber 4e-6
+                  , JsonNumber 5000000
+                  ]
               ])
         , ("world", JsonNull)
         ]

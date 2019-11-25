@@ -12,7 +12,7 @@ viewers! The original code from the video can be found in commit
 ## Testing
 
 ```console
-$ runghc Main.hs
+$ runghc -Wall -Werror Main.hs
 ```
 
 ## Contribution Notes

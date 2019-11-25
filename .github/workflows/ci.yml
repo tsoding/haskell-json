@@ -14,6 +14,6 @@ jobs:
     - run: tar fvx hlint-2.2.4-x86_64-linux.tar.gz
     - run: wget https://github.com/jaspervdj/stylish-haskell/releases/download/v0.9.4.4/stylish-haskell-v0.9.4.4-linux-x86_64.tar.gz
     - run: tar fvx stylish-haskell-v0.9.4.4-linux-x86_64.tar.gz
-    - run: runghc Main.hs
+    - run: runghc -Wall -Werror Main.hs
     - run: ./hlint-2.2.4/hlint Main.hs
     - run: diff -u Main.hs <(./stylish-haskell-v0.9.4.4-linux-x86_64/stylish-haskell Main.hs)
