@@ -2,7 +2,7 @@
 
 module Main where
 
-import Control.Applicative
+import           Control.Applicative
 import           Data.Char
 import           Data.Semigroup
 import           Numeric
