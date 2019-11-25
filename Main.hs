@@ -8,6 +8,8 @@ import           Data.Maybe
 import           Data.Tuple
 import           Numeric
 import           System.Exit
+import           Control.Monad
+import           Data.List
 
 data JsonValue
   = JsonNull
@@ -68,11 +70,7 @@ spanP1 :: (Char -> Bool) -> Parser String
 spanP1 = some . parseIf
 
 parseIf :: (Char -> Bool) -> Parser Char
-parseIf f =
-  Parser $ \case
-    y:ys
-      | f y -> Just (ys, y)
-    _ -> Nothing
+parseIf f = Parser $ mfilter (f . snd) . fmap swap . uncons
 
 jsonNumber :: Parser JsonValue
 jsonNumber = JsonNumber <$> Parser (fmap swap . listToMaybe . reads)
