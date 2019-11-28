@@ -111,13 +111,13 @@ http://www.ecma-international.org/publications/files/ECMA-ST/ECMA-404.pdf
 -}
 decimalLiteral :: Parser (Double, Integer)
 decimalLiteral = (readDecimalPart <$>
-                  (((charP '.') *> (spanP1 "digit" isDigit)) <|>
+                  ((charP '.' *> spanP1 "digit" isDigit) <|>
                    pure "0")
                   <*>
                   (((charP 'e' <|> charP 'E') *>
                     (readExponent <$>
                      ((charP '+' <|> charP '-') <|> pure '+') <*>
-                     (spanP1 "digit" isDigit)))
+                     spanP1 "digit" isDigit))
                    <|>
                    pure 0)) <|>
                   pure (0, 0)
@@ -125,23 +125,23 @@ decimalLiteral = (readDecimalPart <$>
         readExponent '-' = negate . read
         readExponent ch  = error $ ch : " was passed into readExponent, which expects either '+' or '-'"
         
-        readDecimalPart digits expnt = ((read digits)*10**(-offset), expnt)
+        readDecimalPart digits expnt = (read digits * 10**(-offset), expnt)
           where offset = fromIntegral (length digits)
 
 nonNegativeLiteral :: Parser Double
 nonNegativeLiteral = (charP '0' *>
-                      (fmap (readNonNegativePart '0' []) decimalLiteral)) <|>
+                      fmap (readNonNegativePart '0' []) decimalLiteral) <|>
                      (readNonNegativePart <$>
-                      (parseIf "positive digit" isPositiveDigit) <*>
-                      (spanP "digit" isDigit) <*>
+                      parseIf "positive digit" isPositiveDigit <*>
+                      spanP "digit" isDigit <*>
                       decimalLiteral)
   where isPositiveDigit = (&&) <$> isDigit <*> (/= '0')
         readNonNegativePart firstDigit restDigits (decimal, expnt)
-          = ((read (firstDigit:restDigits))+decimal)*(10**exponentDouble)
+          = (read (firstDigit:restDigits) + decimal)*(10**exponentDouble)
           where exponentDouble = fromIntegral expnt
 
 doubleLiteral :: Parser Double
-doubleLiteral = (charP '-' *> (fmap negate nonNegativeLiteral)) <|> nonNegativeLiteral
+doubleLiteral = (charP '-' *> fmap negate nonNegativeLiteral) <|> nonNegativeLiteral
 
 jsonNumber :: Parser JsonValue
 jsonNumber = JsonNumber <$> doubleLiteral
@@ -218,7 +218,7 @@ main = do
           exitFailure
     Left (KnownError (loc, msg)) -> do
       putStrLn $ "[ERROR] Parser failed at character " ++
-                 (show loc) ++
+                 show loc ++
                  ": " ++
                  msg
       exitFailure
