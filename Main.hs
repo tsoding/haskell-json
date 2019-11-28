@@ -72,7 +72,7 @@ charP x = Parser f
   where
     f loc (y:ys)
       | y == x = Right (loc+1, ys, x)
-      | otherwise = Left $ KnownError (loc, "Expected '" ++ [x] ++ "', but found " ++ [y])
+      | otherwise = Left $ KnownError (loc, "Expected '" ++ [x] ++ "', but found '" ++ [y] ++ "'")
     f loc [] = Left $ KnownError (loc, "Expected '" ++ [x] ++ "', but reached end of string")
 
 stringP :: String -> Parser String
