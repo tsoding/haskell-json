@@ -4,7 +4,6 @@ module Main where
 
 import           Control.Applicative
 import           Data.Char
-import           Data.Semigroup
 import           Numeric
 import           System.Exit
 
@@ -73,14 +72,14 @@ charP x = Parser f
   where
     f loc (y:ys)
       | y == x = Right (loc+1, ys, x)
-      | otherwise = Left $ KnownError (loc, "Expected '" <> [x] <> "', but found " <> [y])
-    f loc [] = Left $ KnownError (loc, "Expected '" <> [x] <> "', but reached end of string")
+      | otherwise = Left $ KnownError (loc, "Expected '" ++ [x] ++ "', but found " ++ [y])
+    f loc [] = Left $ KnownError (loc, "Expected '" ++ [x] ++ "', but reached end of string")
 
 stringP :: String -> Parser String
 stringP str = Parser $ \loc input ->
   let result = runParserWithLoc (traverse charP str) loc input in
   case result of
-    Left (KnownError _) -> Left $ KnownError (loc, "Expected \"" <> str <> "\", but found \"" <> input <> "\"")
+    Left (KnownError _) -> Left $ KnownError (loc, "Expected \"" ++ str ++ "\", but found \"" ++ input ++ "\"")
     _                   -> result
 
 jsonBool :: Parser JsonValue
@@ -101,8 +100,8 @@ parseIf desc f =
     case input of
       y:ys
         | f y       -> Right (loc+1, ys, y)
-        | otherwise -> Left $ KnownError (loc, "Expected " <> desc <> ", but found '" <> [y] <> "'")
-      [] -> Left $ KnownError (loc, "Expected " <> desc <> ", but reached end of string")
+        | otherwise -> Left $ KnownError (loc, "Expected " ++ desc ++ ", but found '" ++ [y] ++ "'")
+      [] -> Left $ KnownError (loc, "Expected " ++ desc ++ ", but reached end of string")
 
 {-
 A diagram explaining the logic behind the functions
@@ -208,19 +207,19 @@ main = do
   putStrLn testJsonText
   case runParser jsonValue testJsonText of
     Right (_, input, actualJsonAst) -> do
-      putStrLn ("[INFO] Parsed as: " <> show actualJsonAst)
-      putStrLn ("[INFO] Remaining input (codes): " <> show (map ord input))
+      putStrLn ("[INFO] Parsed as: " ++ show actualJsonAst)
+      putStrLn ("[INFO] Remaining input (codes): " ++ show (map ord input))
       if actualJsonAst == expectedJsonAst
         then putStrLn "[SUCCESS] Parser produced expected result."
         else do
           putStrLn
-            ("[ERROR] Parser produced unexpected result. Expected result was: " <>
+            ("[ERROR] Parser produced unexpected result. Expected result was: " ++
              show expectedJsonAst)
           exitFailure
     Left (KnownError (loc, msg)) -> do
-      putStrLn $ "[ERROR] Parser failed at character " <>
-                 (show loc) <>
-                 ": " <>
+      putStrLn $ "[ERROR] Parser failed at character " ++
+                 (show loc) ++
+                 ": " ++
                  msg
       exitFailure
     Left UnknownError -> do
