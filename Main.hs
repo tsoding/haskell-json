@@ -123,8 +123,9 @@ decimalLiteral = (readDecimalPart <$>
                   pure (0, 0)
   where readExponent '+' = read
         readExponent '-' = negate . read
+        -- This should never occur:
         readExponent ch  = error $ ch : " was passed into readExponent, which expects either '+' or '-'"
-        
+
         readDecimalPart digits expnt = (read digits * 10**(-offset), expnt)
           where offset = fromIntegral (length digits)
 
