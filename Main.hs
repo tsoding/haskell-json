@@ -43,7 +43,7 @@ instance Alternative (Either ParserError) where
   empty = Left UnknownError
   Left UnknownError <|> e2       = e2
   e1@(Left (KnownError (loc1, _))) <|> e2@(Left (KnownError (loc2, _)))
-      | loc2 > loc1 = e2
+      | loc2 >= loc1 = e2
       | otherwise   = e1
   Left _             <|> Right x = Right x
   e1                 <|> _       = e1
@@ -53,16 +53,11 @@ instance Alternative Parser where
   (Parser p1) <|> (Parser p2) = Parser $ \loc input ->
                                            p1 loc input <|> p2 loc input
 
+-- This function replaces any error message from the Parser with defaultMsg
+-- ONLY IF the error message from the Parser indicates that none of the input was read in successfully.
 (<?>) :: Parser a -> String -> Parser a
 (Parser p) <?> defaultMsg = Parser $ \loc input ->
-  let result = p loc input
-      defaultError = Left $ KnownError (loc, defaultMsg) in
-  case result of
-    Left UnknownError -> defaultError
-    Left (KnownError (loc', _))
-      | loc == loc' -> defaultError
-      | otherwise   -> result
-    Right _ -> result
+  p loc input <|> (Left $ KnownError (loc, defaultMsg))
 
 jsonNull :: Parser JsonValue
 jsonNull = JsonNull <$ stringP "null"
@@ -75,11 +70,16 @@ charP x = Parser f
       | otherwise = Left $ KnownError (loc, "Expected '" ++ [x] ++ "', but found '" ++ [y] ++ "'")
     f loc [] = Left $ KnownError (loc, "Expected '" ++ [x] ++ "', but reached end of string")
 
+-- Here, we can not use <?> because the error message from (traverse charP)
+-- will indicate that some of the error message was read in successfully,
+-- but we want our new error message to indicate that,
+-- actually, none of the input was read in successfully since the string
+-- as a whole was not matched.
 stringP :: String -> Parser String
 stringP str = Parser $ \loc input ->
   let result = runParserWithLoc (traverse charP str) loc input in
   case result of
-    Left (KnownError _) -> Left $ KnownError (loc, "Expected \"" ++ str ++ "\", but found \"" ++ input ++ "\"")
+    Left _ -> Left $ KnownError (loc, "Expected \"" ++ str ++ "\", but found \"" ++ input ++ "\"")
     _                   -> result
 
 jsonBool :: Parser JsonValue
