@@ -56,7 +56,7 @@ failP :: String -> Parser a
 failP s = Parser (\s' -> Left ("expected " ++ show s ++ " got " ++ show s'))
 
 stringP :: String -> Parser String
-stringP s = (traverse charP) s <|> failP s
+stringP s = traverse charP s <|> failP s
 
 jsonBool :: Parser JsonValue
 jsonBool = jsonTrue <|> jsonFalse
