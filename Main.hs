@@ -109,22 +109,24 @@ decimalLiteral, nonNegativeLiteral, and doubleLiteral
 can be found on page 12 of
 http://www.ecma-international.org/publications/files/ECMA-ST/ECMA-404.pdf
 -}
+
+data Sign = Positive | Negative
+
 decimalLiteral :: Parser (Double, Integer)
-decimalLiteral = (readDecimalPart <$>
+decimalLiteral = readDecimalPart <$>
                   ((charP '.' *> spanP1 "digit" isDigit) <|>
                    pure "0")
                   <*>
                   (((charP 'e' <|> charP 'E') *>
                     (readExponent <$>
-                     ((charP '+' <|> charP '-') <|> pure '+') <*>
+                     (((Positive <$ charP '+') <|>
+                       (Negative <$ charP '-')) <|>
+                      pure Positive) <*>
                      spanP1 "digit" isDigit))
                    <|>
-                   pure 0)) <|>
-                  pure (0, 0)
-  where readExponent '+' = read
-        readExponent '-' = negate . read
-        -- This should never occur:
-        readExponent ch  = error $ ch : " was passed into readExponent, which expects either '+' or '-'"
+                   pure 0)
+  where readExponent Positive = read
+        readExponent Negative = negate . read
 
         readDecimalPart digits expnt = (read digits * 10**(-offset), expnt)
           where offset = fromIntegral (length digits)
