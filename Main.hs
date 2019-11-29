@@ -79,7 +79,7 @@ parseIf f =
 
 listToEither :: [a] -> Either String a
 listToEither (x:_) = Right x
-listToEither [] = Left "got empty list"
+listToEither []    = Left "got empty list"
 
 jsonNumber :: Parser JsonValue
 jsonNumber = JsonNumber <$> Parser (fmap swap . listToEither . reads)
