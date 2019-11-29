@@ -4,7 +4,6 @@ module Main where
 
 import           Control.Applicative
 import           Data.Char
-import           Data.Maybe
 import           Data.Tuple
 import           Numeric
 import           System.Exit
@@ -40,7 +39,7 @@ instance Alternative Parser where
   empty = Parser $ const (Left "nothing to parse")
   (Parser p1) <|> (Parser p2) = Parser $ \input -> case p1 input of
       Right s -> Right s
-      Left s  -> p2 input
+      Left  _ -> p2 input
 
 jsonNull :: Parser JsonValue
 jsonNull = JsonNull <$ stringP "null"
@@ -79,7 +78,7 @@ parseIf f =
     _ -> Left "predicate failed"
 
 listToEither :: [a] -> Either String a
-listToEither (x:xs) = Right x
+listToEither (x:_) = Right x
 listToEither [] = Left "got empty list"
 
 jsonNumber :: Parser JsonValue
