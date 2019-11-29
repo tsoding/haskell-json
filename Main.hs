@@ -57,7 +57,7 @@ instance Alternative Parser where
 -- ONLY IF the error message from the Parser indicates that none of the input was read in successfully.
 (<?>) :: Parser a -> String -> Parser a
 (Parser p) <?> defaultMsg = Parser $ \loc input ->
-  p loc input <|> (Left $ KnownError (loc, defaultMsg))
+  p loc input <|> Left (KnownError (loc, defaultMsg))
 
 jsonNull :: Parser JsonValue
 jsonNull = JsonNull <$ stringP "null"
