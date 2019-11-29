@@ -134,13 +134,13 @@ main = do
   putStrLn testJsonText
   case runParser jsonValue testJsonText of
     Just (input, actualJsonAst) -> do
-      putStrLn ("[INFO] Parsed as: " <> show actualJsonAst)
-      putStrLn ("[INFO] Remaining input (codes): " <> show (map ord input))
+      putStrLn ("[INFO] Parsed as: " ++ show actualJsonAst)
+      putStrLn ("[INFO] Remaining input (codes): " ++ show (map ord input))
       if actualJsonAst == expectedJsonAst
         then putStrLn "[SUCCESS] Parser produced expected result."
         else do
           putStrLn
-            ("[ERROR] Parser produced unexpected result. Expected result was: " <>
+            ("[ERROR] Parser produced unexpected result. Expected result was: " ++
              show expectedJsonAst)
           exitFailure
     Nothing -> do
