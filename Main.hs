@@ -1,5 +1,5 @@
 {-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE ViewPatterns #-}
+{-# LANGUAGE ViewPatterns      #-}
 
 module Main where
 
@@ -14,7 +14,7 @@ data Input = Input
   } deriving (Show, Eq)
 
 inputUncons :: Input -> Maybe (Char, Input)
-inputUncons (Input _ []) = Nothing
+inputUncons (Input _ [])       = Nothing
 inputUncons (Input loc (x:xs)) = Just (x, Input (loc + 1) xs)
 
 data JsonValue
@@ -184,7 +184,7 @@ parseFile :: FilePath -> Parser a -> IO (Either ParserError a)
 parseFile fileName parser = do
   input <- readFile fileName
   case runParser parser $ Input 0 input of
-    Left e -> return $ Left e
+    Left e       -> return $ Left e
     Right (_, x) -> return $ Right x
 
 main :: IO ()
