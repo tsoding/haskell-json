@@ -48,22 +48,13 @@ instance Applicative Parser where
 
 instance Alternative (Either ParserError) where
   empty = Left $ ParserError 0 "empty"
-  e1@(Left (ParserError loc1 _)) <|> e2@(Left (ParserError loc2 _))
-    | loc2 >= loc1 = e2
-    | otherwise = e1
-  Left _ <|> Right x = Right x
+  Left _ <|> e2 = e2
   e1 <|> _ = e1
 
 instance Alternative Parser where
-  empty = Parser $ \_ -> empty
+  empty = Parser $ const empty
   (Parser p1) <|> (Parser p2) =
     Parser $ \input -> p1 input <|> p2 input
-
--- This function replaces any error message from the Parser with defaultMsg
--- ONLY IF the error message from the Parser indicates that none of the input was read in successfully.
-(<?>) :: Parser a -> String -> Parser a
-(Parser p) <?> defaultMsg = Parser $ \input ->
-  p input <|> Left (ParserError (inputLoc input) defaultMsg)
 
 jsonNull :: Parser JsonValue
 jsonNull = JsonNull <$ stringP "null"
@@ -84,11 +75,6 @@ charP x = Parser f
         (inputLoc input)
         ("Expected '" ++ [x] ++ "', but reached end of string")
 
--- Here, we can not use <?> because the error message from (traverse charP)
--- will indicate that some of the error message was read in successfully,
--- but we want our new error message to indicate that,
--- actually, none of the input was read in successfully since the string
--- as a whole was not matched.
 stringP :: String -> Parser String
 stringP str =
   Parser $ \input ->
@@ -99,7 +85,7 @@ stringP str =
             ParserError
               (inputLoc input)
               ("Expected \"" ++
-               str ++ "\", but found \"" ++ (inputStr input) ++ "\"")
+               str ++ "\", but found \"" ++ inputStr input ++ "\"")
           _ -> result
 
 jsonBool :: Parser JsonValue
@@ -220,10 +206,8 @@ jsonObject =
 
 jsonValue :: Parser JsonValue
 jsonValue =
-  (jsonNull <|> jsonBool <|> jsonNumber <|> jsonString <|> jsonArray <|>
-   jsonObject)
-  <?>
-  "Could not parse the given expression"
+  jsonNull <|> jsonBool <|> jsonNumber <|> jsonString <|> jsonArray <|>
+  jsonObject
 
 parseFile :: FilePath -> Parser a -> IO (Either ParserError a)
 parseFile fileName parser = do
