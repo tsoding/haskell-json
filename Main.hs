@@ -1,4 +1,5 @@
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE ViewPatterns #-}
 
 module Main where
 
@@ -6,6 +7,15 @@ import           Control.Applicative
 import           Data.Char
 import           Numeric
 import           System.Exit
+
+data Input = Input
+  { inputLoc :: Int
+  , inputStr :: String
+  } deriving (Show, Eq)
+
+inputUncons :: Input -> Maybe (Char, Input)
+inputUncons (Input _ []) = Nothing
+inputUncons (Input loc (x:xs)) = Just (x, Input (loc + 1) xs)
 
 data JsonValue
   = JsonNull
@@ -16,48 +26,45 @@ data JsonValue
   | JsonObject [(String, JsonValue)]
   deriving (Show, Eq)
 
-data ParserError = UnknownError | KnownError (Int, String) deriving (Show)
+data ParserError = UnknownError | KnownError Int String deriving (Show)
 
 newtype Parser a = Parser
-  { runParserWithLoc :: Int -> String -> Either ParserError (Int, String, a)
+  { runParser :: Input -> Either ParserError (Input, a)
   }
-
-runParser :: Parser a -> String -> Either ParserError (Int, String, a)
-runParser parser = runParserWithLoc parser 0
 
 instance Functor Parser where
   fmap f (Parser p) =
-    Parser $ \loc input -> do
-      (loc', input', x) <- p loc input
-      return (loc', input', f x)
+    Parser $ \input -> do
+      (input', x) <- p input
+      return (input', f x)
 
 instance Applicative Parser where
-  pure x = Parser $ \loc input -> Right (loc, input, x)
+  pure x = Parser $ \input -> Right (input, x)
   (Parser p1) <*> (Parser p2) =
-    Parser $ \loc input -> do
-      (loc', input', f) <- p1 loc input
-      (loc'', input'', a) <- p2 loc' input'
-      return (loc'', input'', f a)
+    Parser $ \input -> do
+      (input', f) <- p1 input
+      (input'', a) <- p2 input'
+      return (input'', f a)
 
 instance Alternative (Either ParserError) where
   empty = Left UnknownError
-  Left UnknownError <|> e2       = e2
-  e1@(Left (KnownError (loc1, _))) <|> e2@(Left (KnownError (loc2, _)))
-      | loc2 >= loc1 = e2
-      | otherwise   = e1
-  Left _             <|> Right x = Right x
-  e1                 <|> _       = e1
+  Left UnknownError <|> e2 = e2
+  e1@(Left (KnownError loc1 _)) <|> e2@(Left (KnownError loc2 _))
+    | loc2 >= loc1 = e2
+    | otherwise = e1
+  Left _ <|> Right x = Right x
+  e1 <|> _ = e1
 
 instance Alternative Parser where
-  empty = Parser $ \_ _ -> empty
-  (Parser p1) <|> (Parser p2) = Parser $ \loc input ->
-                                           p1 loc input <|> p2 loc input
+  empty = Parser $ \_ -> empty
+  (Parser p1) <|> (Parser p2) =
+    Parser $ \input -> p1 input <|> p2 input
 
 -- This function replaces any error message from the Parser with defaultMsg
 -- ONLY IF the error message from the Parser indicates that none of the input was read in successfully.
 (<?>) :: Parser a -> String -> Parser a
-(Parser p) <?> defaultMsg = Parser $ \loc input ->
-  p loc input <|> Left (KnownError (loc, defaultMsg))
+(Parser p) <?> defaultMsg = Parser $ \input ->
+  p input <|> Left (KnownError (inputLoc input) defaultMsg)
 
 jsonNull :: Parser JsonValue
 jsonNull = JsonNull <$ stringP "null"
@@ -65,10 +72,18 @@ jsonNull = JsonNull <$ stringP "null"
 charP :: Char -> Parser Char
 charP x = Parser f
   where
-    f loc (y:ys)
-      | y == x = Right (loc+1, ys, x)
-      | otherwise = Left $ KnownError (loc, "Expected '" ++ [x] ++ "', but found '" ++ [y] ++ "'")
-    f loc [] = Left $ KnownError (loc, "Expected '" ++ [x] ++ "', but reached end of string")
+    f input@(inputUncons -> Just (y, ys))
+      | y == x = Right (ys, x)
+      | otherwise =
+        Left $
+        KnownError
+          (inputLoc input)
+          ("Expected '" ++ [x] ++ "', but found '" ++ [y] ++ "'")
+    f input =
+      Left $
+      KnownError
+        (inputLoc input)
+        ("Expected '" ++ [x] ++ "', but reached end of string")
 
 -- Here, we can not use <?> because the error message from (traverse charP)
 -- will indicate that some of the error message was read in successfully,
@@ -76,11 +91,17 @@ charP x = Parser f
 -- actually, none of the input was read in successfully since the string
 -- as a whole was not matched.
 stringP :: String -> Parser String
-stringP str = Parser $ \loc input ->
-  let result = runParserWithLoc (traverse charP str) loc input in
-  case result of
-    Left _ -> Left $ KnownError (loc, "Expected \"" ++ str ++ "\", but found \"" ++ input ++ "\"")
-    _                   -> result
+stringP str =
+  Parser $ \input ->
+    let result = runParser (traverse charP str) input
+     in case result of
+          Left _ ->
+            Left $
+            KnownError
+              (inputLoc input)
+              ("Expected \"" ++
+               str ++ "\", but found \"" ++ (inputStr input) ++ "\"")
+          _ -> result
 
 jsonBool :: Parser JsonValue
 jsonBool = jsonTrue <|> jsonFalse
@@ -96,12 +117,20 @@ spanP1 desc = some . parseIf desc
 
 parseIf :: String -> (Char -> Bool) -> Parser Char
 parseIf desc f =
-  Parser $ \loc input ->
+  Parser $ \input ->
     case input of
-      y:ys
-        | f y       -> Right (loc+1, ys, y)
-        | otherwise -> Left $ KnownError (loc, "Expected " ++ desc ++ ", but found '" ++ [y] ++ "'")
-      [] -> Left $ KnownError (loc, "Expected " ++ desc ++ ", but reached end of string")
+      (inputUncons -> Just (y, ys))
+        | f y -> Right (ys, y)
+        | otherwise ->
+          Left $
+          KnownError
+            (inputLoc input)
+            ("Expected " ++ desc ++ ", but found '" ++ [y] ++ "'")
+      _ ->
+        Left $
+        KnownError
+          (inputLoc input)
+          ("Expected " ++ desc ++ ", but reached end of string")
 
 {-
 A diagram explaining the logic behind the functions
@@ -200,18 +229,19 @@ jsonValue =
 parseFile :: FilePath -> Parser a -> IO (Either ParserError a)
 parseFile fileName parser = do
   input <- readFile fileName
-  case runParser parser input of
-      Left e          -> return $ Left e
-      Right (_, _, x) -> return $ Right x
+  case runParser parser $ Input 0 input of
+    Left e -> return $ Left e
+    Right (_, x) -> return $ Right x
 
 main :: IO ()
 main = do
   putStrLn "[INFO] JSON:"
   putStrLn testJsonText
-  case runParser jsonValue testJsonText of
-    Right (_, input, actualJsonAst) -> do
+  case runParser jsonValue $ Input 0 testJsonText of
+    Right (input, actualJsonAst) -> do
       putStrLn ("[INFO] Parsed as: " ++ show actualJsonAst)
-      putStrLn ("[INFO] Remaining input (codes): " ++ show (map ord input))
+      putStrLn
+        ("[INFO] Remaining input (codes): " ++ show (map ord $ inputStr input))
       if actualJsonAst == expectedJsonAst
         then putStrLn "[SUCCESS] Parser produced expected result."
         else do
@@ -219,11 +249,9 @@ main = do
             ("[ERROR] Parser produced unexpected result. Expected result was: " ++
              show expectedJsonAst)
           exitFailure
-    Left (KnownError (loc, msg)) -> do
-      putStrLn $ "[ERROR] Parser failed at character " ++
-                 show loc ++
-                 ": " ++
-                 msg
+    Left (KnownError loc msg) -> do
+      putStrLn $
+        "[ERROR] Parser failed at character " ++ show loc ++ ": " ++ msg
       exitFailure
     Left UnknownError -> do
       putStrLn "[ERROR] Parser failed and didn't produce any output."
