@@ -95,9 +95,6 @@ jsonBool = jsonTrue <|> jsonFalse
 spanP :: String -> (Char -> Bool) -> Parser String
 spanP desc = many . parseIf desc
 
-spanP1 :: String -> (Char -> Bool) -> Parser String
-spanP1 desc = some . parseIf desc
-
 parseIf :: String -> (Char -> Bool) -> Parser Char
 parseIf desc f =
   Parser $ \input ->
@@ -116,47 +113,23 @@ parseIf desc f =
           ("Expected " ++ desc ++ ", but reached end of string")
 
 {-
-A diagram explaining the logic behind the functions
-decimalLiteral, nonNegativeLiteral, and doubleLiteral
-can be found on page 12 of
+See page 12 of
 http://www.ecma-international.org/publications/files/ECMA-ST/ECMA-404.pdf
 -}
-
-data Sign = Positive | Negative
-
-decimalLiteral :: Parser (Double, Integer)
-decimalLiteral = readDecimalPart <$>
-                  ((charP '.' *> spanP1 "digit" isDigit) <|>
-                   pure "0")
-                  <*>
-                  (((charP 'e' <|> charP 'E') *>
-                    (readExponent <$>
-                     (((Positive <$ charP '+') <|>
-                       (Negative <$ charP '-')) <|>
-                      pure Positive) <*>
-                     spanP1 "digit" isDigit))
-                   <|>
-                   pure 0)
-  where readExponent Positive = read
-        readExponent Negative = negate . read
-
-        readDecimalPart digits expnt = (read digits * 10**(-offset), expnt)
-          where offset = fromIntegral (length digits)
-
-nonNegativeLiteral :: Parser Double
-nonNegativeLiteral = (charP '0' *>
-                      fmap (readNonNegativePart '0' []) decimalLiteral) <|>
-                     (readNonNegativePart <$>
-                      parseIf "positive digit" isPositiveDigit <*>
-                      spanP "digit" isDigit <*>
-                      decimalLiteral)
-  where isPositiveDigit = (&&) <$> isDigit <*> (/= '0')
-        readNonNegativePart firstDigit restDigits (decimal, expnt)
-          = (read (firstDigit:restDigits) + decimal)*(10**exponentDouble)
-          where exponentDouble = fromIntegral expnt
-
 doubleLiteral :: Parser Double
-doubleLiteral = (charP '-' *> fmap negate nonNegativeLiteral) <|> nonNegativeLiteral
+doubleLiteral =
+  (\sign int frac expo ->
+       sign * (int + frac) * (10 ** expo))
+    <$> (minus <|> pure 1)
+    <*> (read <$> digits)
+    <*> opt (read <$> (('0':) <$> ((:) <$> charP '.' <*> digits)))
+    <*> opt (e *> ((*) <$> (plus <|> minus <|> pure 1) <*> (read <$> digits)))
+  where
+    digits = some $ parseIf "digit" isDigit
+    minus = (-1) <$ charP '-'
+    plus = 1 <$ charP '+'
+    e = charP 'e' <|> charP 'E'
+    opt = (<|> pure 0)
 
 jsonNumber :: Parser JsonValue
 jsonNumber = JsonNumber <$> doubleLiteral
