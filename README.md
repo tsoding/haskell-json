@@ -17,4 +17,4 @@ $ runghc -Wall -Werror Main.hs
 
 ## Contribution Notes
 
-- Pull Requests that do not add any new functionality to the parser will be rejected without any further discussion. Examples are refactoring, renaming, reformating, restyling, etc. Sorry for any inconveniences.
+- Pull Requests that do not add any new functionality to the parser or fix bugs will be rejected without any further discussion. Examples are refactoring, renaming, reformating, restyling, etc. Sorry for any inconveniences.
