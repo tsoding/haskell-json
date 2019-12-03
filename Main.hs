@@ -78,15 +78,13 @@ charP x = Parser f
 stringP :: String -> Parser String
 stringP str =
   Parser $ \input ->
-    let result = runParser (traverse charP str) input
-     in case result of
-          Left _ ->
-            Left $
-            ParserError
-              (inputLoc input)
-              ("Expected \"" ++
-               str ++ "\", but found \"" ++ inputStr input ++ "\"")
-          _ -> result
+    case runParser (traverse charP str) input of
+      Left _ ->
+        Left $
+        ParserError
+          (inputLoc input)
+          ("Expected \"" ++ str ++ "\", but found \"" ++ inputStr input ++ "\"")
+      result -> result
 
 jsonBool :: Parser JsonValue
 jsonBool = jsonTrue <|> jsonFalse
