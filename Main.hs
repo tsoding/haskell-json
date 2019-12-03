@@ -26,7 +26,7 @@ data JsonValue
   | JsonObject [(String, JsonValue)]
   deriving (Show, Eq)
 
-data ParserError = UnknownError | KnownError Int String deriving (Show)
+data ParserError = ParserError Int String deriving (Show)
 
 newtype Parser a = Parser
   { runParser :: Input -> Either ParserError (Input, a)
@@ -47,9 +47,8 @@ instance Applicative Parser where
       return (input'', f a)
 
 instance Alternative (Either ParserError) where
-  empty = Left UnknownError
-  Left UnknownError <|> e2 = e2
-  e1@(Left (KnownError loc1 _)) <|> e2@(Left (KnownError loc2 _))
+  empty = Left $ ParserError 0 "empty"
+  e1@(Left (ParserError loc1 _)) <|> e2@(Left (ParserError loc2 _))
     | loc2 >= loc1 = e2
     | otherwise = e1
   Left _ <|> Right x = Right x
@@ -64,7 +63,7 @@ instance Alternative Parser where
 -- ONLY IF the error message from the Parser indicates that none of the input was read in successfully.
 (<?>) :: Parser a -> String -> Parser a
 (Parser p) <?> defaultMsg = Parser $ \input ->
-  p input <|> Left (KnownError (inputLoc input) defaultMsg)
+  p input <|> Left (ParserError (inputLoc input) defaultMsg)
 
 jsonNull :: Parser JsonValue
 jsonNull = JsonNull <$ stringP "null"
@@ -76,12 +75,12 @@ charP x = Parser f
       | y == x = Right (ys, x)
       | otherwise =
         Left $
-        KnownError
+        ParserError
           (inputLoc input)
           ("Expected '" ++ [x] ++ "', but found '" ++ [y] ++ "'")
     f input =
       Left $
-      KnownError
+      ParserError
         (inputLoc input)
         ("Expected '" ++ [x] ++ "', but reached end of string")
 
@@ -97,7 +96,7 @@ stringP str =
      in case result of
           Left _ ->
             Left $
-            KnownError
+            ParserError
               (inputLoc input)
               ("Expected \"" ++
                str ++ "\", but found \"" ++ (inputStr input) ++ "\"")
@@ -123,12 +122,12 @@ parseIf desc f =
         | f y -> Right (ys, y)
         | otherwise ->
           Left $
-          KnownError
+          ParserError
             (inputLoc input)
             ("Expected " ++ desc ++ ", but found '" ++ [y] ++ "'")
       _ ->
         Left $
-        KnownError
+        ParserError
           (inputLoc input)
           ("Expected " ++ desc ++ ", but reached end of string")
 
@@ -249,12 +248,9 @@ main = do
             ("[ERROR] Parser produced unexpected result. Expected result was: " ++
              show expectedJsonAst)
           exitFailure
-    Left (KnownError loc msg) -> do
+    Left (ParserError loc msg) -> do
       putStrLn $
         "[ERROR] Parser failed at character " ++ show loc ++ ": " ++ msg
-      exitFailure
-    Left UnknownError -> do
-      putStrLn "[ERROR] Parser failed and didn't produce any output."
       exitFailure
   where
     testJsonText =
