@@ -144,13 +144,13 @@ doubleLiteral =
     plus = 1 <$ charP '+'
     e = charP 'e' <|> charP 'E'
 
--- | Build a Double from its parts (sign, integral part, decimal part, exponent)  
+-- | Build a Double from its parts (sign, integral part, decimal part, exponent)
 doubleFromParts :: Integer  -- sign
                 -> Integer  -- integral part
                 -> Double   -- decimal part
                 -> Integer  -- exponent
                 -> Double
-doubleFromParts sign int dec expo = 
+doubleFromParts sign int dec expo =
   fromIntegral sign * (fromIntegral int + dec) * (10 ^^ expo)
 
 -- | Parser for json number values
@@ -189,7 +189,7 @@ jsonString = JsonString <$> stringLiteral
 ws :: Parser String
 ws = spanP "whitespace character" isSpace
 
--- | Creates a parser for a string of type "element1 sep1 element2 sep2 element3" 
+-- | Creates a parser for a string of type "element1 sep1 element2 sep2 element3"
 -- from a parser for separators (sep1, sep2) and and a parser form elements (element1, element2, element3).
 sepBy :: Parser a   -- Parser for the separators
       -> Parser b   -- Parser for elements
