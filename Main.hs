@@ -135,13 +135,13 @@ doubleLiteral :: Parser Double
 doubleLiteral =
   doubleFromParts
     <$> (minus <|> pure 1)
-    <*> (read <$> digits)
+    <*> ((read::String -> Integer) <$> digits)
     <*> ((read <$> (('0':) <$> ((:) <$> charP '.' <*> digits))) <|> pure 0)
     <*> ((e *> ((*) <$> (plus <|> minus <|> pure 1) <*> (read <$> digits))) <|> pure 0)
   where
     digits = some $ parseIf "digit" isDigit
     minus = (-1) <$ charP '-'
-    plus = 1 <$ charP '+'
+    plus = (1::Integer) <$ charP '+'
     e = charP 'e' <|> charP 'E'
     doubleFromParts sign int dec expo = (fromIntegral sign) * ((fromIntegral int) + dec) * (10 ^^ expo)
 
@@ -202,7 +202,6 @@ jsonObject =
   where
     pair = liftA2 (,) (stringLiteral <* ws <* charP ':' <* ws) jsonValue
 
-
 -- | Parser for any json
 jsonValue :: Parser JsonValue
 jsonValue =
@@ -229,14 +228,6 @@ parseFile fileName parser = do
 -- [INFO] Parsed as: JsonObject [("hello",JsonArray [JsonBool False,JsonBool True,JsonNull,JsonNumber 42.0,JsonString "foo\n\4660\"",JsonArray [JsonNumber 1.0,JsonNumber (-2.0),JsonNumber 3.1415,JsonNumber 4.0e-6,JsonNumber 5000000.0,JsonNumber 1.23]]),("world",JsonNull)]
 -- [INFO] Remaining input (codes): [10]
 -- [SUCCESS] Parser produced expected result.
--- [INFO] JSON:
--- {
---     "hello": [false, true, null, 42, "foo\n\u1234\"", [1, -2, 3.1415, 4e-6, 5E6, 0.123e+1]],
---     "world": null,
---     "world": "This will provoke a an error"
--- }
--- <BLANKLINE>
--- [SUCCESS] Parser failed at character 0: Found a repeated key in a map: "world". A json object and they should be unique.
 --
 
 main :: IO ()
