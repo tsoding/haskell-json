@@ -135,15 +135,23 @@ doubleLiteral :: Parser Double
 doubleLiteral =
   doubleFromParts
     <$> (minus <|> pure 1)
-    <*> ((read::String -> Integer) <$> digits)
+    <*> (read <$> digits)
     <*> ((read <$> (('0':) <$> ((:) <$> charP '.' <*> digits))) <|> pure 0)
     <*> ((e *> ((*) <$> (plus <|> minus <|> pure 1) <*> (read <$> digits))) <|> pure 0)
   where
     digits = some $ parseIf "digit" isDigit
     minus = (-1) <$ charP '-'
-    plus = (1::Integer) <$ charP '+'
+    plus = 1 <$ charP '+'
     e = charP 'e' <|> charP 'E'
-    doubleFromParts sign int dec expo = (fromIntegral sign) * ((fromIntegral int) + dec) * (10 ^^ expo)
+
+-- | Build a Double from its parts (sign, integral part, decimal part, exponent)  
+doubleFromParts :: Integer  -- sign
+                -> Integer  -- integral part
+                -> Double   -- decimal part
+                -> Integer  -- exponent
+                -> Double
+doubleFromParts sign int dec expo = 
+  fromIntegral sign * (fromIntegral int + dec) * (10 ^^ expo)
 
 -- | Parser for json number values
 jsonNumber :: Parser JsonValue
