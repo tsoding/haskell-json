@@ -1,3 +1,4 @@
+{-# LANGUAGE ExplicitForAll    #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE ViewPatterns      #-}
 
@@ -202,13 +203,39 @@ jsonArray = JsonArray <$> (charP '[' *> ws *> elements <* ws <* charP ']')
   where
     elements = sepBy (ws *> charP ',' <* ws) jsonValue
 
+-- | Looks for a the first repeated key in a list of (key,value), if any
+repeatedKey :: Eq a => [(a,b)] -> Maybe a
+repeatedKey [] = Nothing
+repeatedKey [_] = Nothing
+repeatedKey (x:xs) = if sum equalElems > 0
+                      then Just $ fst x
+                      else repeatedKey xs
+  where
+    equalElems = [1::Int | y <- xs, fst x == fst y]
+
+-- | Create a new parser that adds an additional check in case of a successful parsing
+validateParse :: Parser a                 -- original parser
+              -> (a -> Maybe ParserError) -- validation function
+              -> Parser a                 -- parser with validation
+validateParse p validate = Parser $ \input -> do
+  (input',parsed) <- runParser p input
+  case validate parsed of
+    Nothing -> Right (input',parsed)
+    Just e  -> Left e
+
+-- | Add a validation step to the parser that fails in case the (key,value) pair list has repeated keys
+repeatedKeyValidation :: Show a => Eq a => Parser [(a,b)] -- original parser
+                                        -> Parser [(a,b)] -- parser that validates output
+repeatedKeyValidation p = Parser $ \input -> runParser (validateParse p (fmap (errorMessage input) . repeatedKey)) input
+  where
+    errorMessage input a = ParserError (inputLoc input) ("The key " ++ show a ++ " is duplicated")
+
 -- | Parser for json objects
 jsonObject :: Parser JsonValue
-jsonObject =
-  JsonObject <$>
-  (charP '{' *> ws *> sepBy (ws *> charP ',' <* ws) pair <* ws <* charP '}')
+jsonObject = JsonObject <$> repeatedKeyValidation parser
   where
     pair = liftA2 (,) (stringLiteral <* ws <* charP ':' <* ws) jsonValue
+    parser = charP '{' *> ws *> sepBy (ws *> charP ',' <* ws) pair <* ws <* charP '}'
 
 -- | Parser for any json
 jsonValue :: Parser JsonValue
@@ -236,6 +263,14 @@ parseFile fileName parser = do
 -- [INFO] Parsed as: JsonObject [("hello",JsonArray [JsonBool False,JsonBool True,JsonNull,JsonNumber 42.0,JsonString "foo\n\4660\"",JsonArray [JsonNumber 1.0,JsonNumber (-2.0),JsonNumber 3.1415,JsonNumber 4.0e-6,JsonNumber 5000000.0,JsonNumber 1.23]]),("world",JsonNull)]
 -- [INFO] Remaining input (codes): [10]
 -- [SUCCESS] Parser produced expected result.
+-- [INFO] JSON:
+-- {
+--     "hello": [false, true, null, 42, "foo\n\u1234\"", [1, -2, 3.1415, 4e-6, 5E6, 0.123e+1]],
+--     "world": null,
+--     "world": "This will provoke a an error"
+-- }
+-- <BLANKLINE>
+-- [SUCCESS] Parser failed at character 0: The key "world" is duplicated
 --
 
 main :: IO ()
@@ -258,6 +293,18 @@ main = do
       putStrLn $
         "[ERROR] Parser failed at character " ++ show loc ++ ": " ++ msg
       exitFailure
+  putStrLn "[INFO] JSON:"
+  putStrLn testJsonText2
+  case runParser jsonValue $ Input 0 testJsonText2 of
+    Right (input, actualJsonAst2) -> do
+      putStrLn ("[INFO] Parsed as: " ++ show actualJsonAst2)
+      putStrLn
+        ("[INFO] Remaining input (codes): " ++ show (map ord $ inputStr input))
+      putStrLn "[ERROR] An error was expected."
+      exitFailure
+    Left (ParserError loc msg) ->
+      putStrLn $
+        "[SUCCESS] Parser failed at character " ++ show loc ++ ": " ++ msg
   where
     testJsonText =
       unlines
@@ -285,4 +332,12 @@ main = do
                   ]
               ])
         , ("world", JsonNull)
+        ]
+    testJsonText2 =
+      unlines
+        [ "{"
+        , "    \"hello\": [false, true, null, 42, \"foo\\n\\u1234\\\"\", [1, -2, 3.1415, 4e-6, 5E6, 0.123e+1]],"
+        , "    \"world\": null,"
+        , "    \"world\": \"This will provoke a an error\""
+        , "}"
         ]
