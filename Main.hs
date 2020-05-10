@@ -7,6 +7,7 @@ import           Control.Applicative
 import           Data.Char
 import           Numeric
 import           System.Exit
+import           Data.Map.Strict hiding (empty)
 
 data Input = Input
   { inputLoc :: Int
@@ -25,7 +26,7 @@ data JsonValue
   | JsonNumber Double
   | JsonString String
   | JsonArray [JsonValue]
-  | JsonObject [(String, JsonValue)]
+  | JsonObject (Map String JsonValue)
   deriving (Show, Eq)
 
 data ParserError = ParserError Int String deriving (Show)
@@ -205,7 +206,7 @@ jsonArray = JsonArray <$> (charP '[' *> ws *> elements <* ws <* charP ']')
 -- | Parser for json objects
 jsonObject :: Parser JsonValue
 jsonObject =
-  JsonObject <$>
+  JsonObject . fromList <$>
   (charP '{' *> ws *> sepBy (ws *> charP ',' <* ws) pair <* ws <* charP '}')
   where
     pair = liftA2 (,) (stringLiteral <* ws <* charP ':' <* ws) jsonValue
@@ -246,7 +247,7 @@ main = do
     Right (input, actualJsonAst) -> do
       putStrLn ("[INFO] Parsed as: " ++ show actualJsonAst)
       putStrLn
-        ("[INFO] Remaining input (codes): " ++ show (map ord $ inputStr input))
+        ("[INFO] Remaining input (codes): " ++ show (ord <$> inputStr input))
       if actualJsonAst == expectedJsonAst
         then putStrLn "[SUCCESS] Parser produced expected result."
         else do
@@ -267,7 +268,7 @@ main = do
         , "}"
         ]
     expectedJsonAst =
-      JsonObject
+      JsonObject $ fromList
         [ ( "hello"
           , JsonArray
               [ JsonBool False
