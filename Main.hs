@@ -5,9 +5,9 @@ module Main where
 
 import           Control.Applicative
 import           Data.Char
+import           Data.Map.Strict     hiding (empty)
 import           Numeric
 import           System.Exit
-import           Data.Map.Strict hiding (empty)
 
 data Input = Input
   { inputLoc :: Int
