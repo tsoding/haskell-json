@@ -224,10 +224,11 @@ jsonValue =
 
 -- | Apply parser to an input, fails if anything's left in the input
 parseInput :: Input -> Either ParserError JsonValue
-parseInput i = case runParser jsonValue i of
-  Left e -> Left e
-  Right ((Input _ ""), jsonValue) -> Right jsonValue
-  Right ((Input loc str), _) -> Left . ParserError loc $ "unexpected string remaining: " <> str
+parseInput i = do
+  result <- runParser jsonValue i
+  case result of
+    ((Input _ ""), jsonValue) -> Right jsonValue
+    ((Input loc str), _) -> Left . ParserError loc $ "unexpected string remaining: " <> str
 
 -- | Apply parser to content of file
 parseFile :: FilePath                 -- File path to parse
