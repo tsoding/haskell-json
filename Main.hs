@@ -5,6 +5,7 @@ module Main where
 
 import           Control.Applicative
 import           Data.Char
+import           Data.Foldable
 import           Numeric
 import           System.Exit
 
@@ -142,8 +143,7 @@ doubleLiteral =
     integerP = zeroP <|> unsignedPositiveIntegerP
     zeroP = stringP "0"
     unsignedPositiveIntegerP = (:) <$> nonZeroDigitP <*> many digit
-    nonZeroDigitP = choice . fmap charP $ ("123456789" :: [Char])
-    choice = foldr (<|>) empty
+    nonZeroDigitP = asum . fmap charP $ ("123456789" :: String)
     digits = some digit
     digit = parseIf "digit" isDigit
     minus = (-1) <$ charP '-'
@@ -227,8 +227,8 @@ parseInput :: Input -> Either ParserError JsonValue
 parseInput i = do
   result <- runParser jsonValue i
   case result of
-    ((Input _ ""), v) -> Right v
-    ((Input loc str), _) -> Left . ParserError loc $ "unexpected string remaining: " <> str
+    (Input _ "", v) -> Right v
+    (Input loc str, _) -> Left . ParserError loc $ "unexpected string remaining: " <> str
 
 -- | Apply parser to content of file
 parseFile :: FilePath                 -- File path to parse
