@@ -135,11 +135,17 @@ doubleLiteral :: Parser Double
 doubleLiteral =
   doubleFromParts
     <$> (minus <|> pure 1)
-    <*> (read <$> digits)
+    <*> (read <$> integerP)
     <*> ((read <$> (('0':) <$> ((:) <$> charP '.' <*> digits))) <|> pure 0)
     <*> ((e *> ((*) <$> (plus <|> minus <|> pure 1) <*> (read <$> digits))) <|> pure 0)
   where
-    digits = some $ parseIf "digit" isDigit
+    integerP = zeroP <|> unsignedPositiveIntegerP
+    zeroP = stringP "0"
+    unsignedPositiveIntegerP = (:) <$> nonZeroDigitP <*> many digit
+    nonZeroDigitP = choice . fmap charP $ ("123456789" :: [Char])
+    choice = foldr (<|>) empty
+    digits = some digit
+    digit = parseIf "digit" isDigit
     minus = (-1) <$ charP '-'
     plus = 1 <$ charP '+'
     e = charP 'e' <|> charP 'E'
@@ -215,6 +221,13 @@ jsonValue :: Parser JsonValue
 jsonValue =
   jsonNull <|> jsonBool <|> jsonNumber <|> jsonString <|> jsonArray <|>
   jsonObject
+
+-- | Apply parser to an input, fails if anything's left in the input
+parseInput :: Input -> Either ParserError JsonValue
+parseInput i = case runParser jsonValue i of
+  Left e -> Left e
+  Right ((Input _ ""), jsonValue) -> Right jsonValue
+  Right ((Input loc str), _) -> Left . ParserError loc $ "unexpected string remaining: " <> str
 
 -- | Apply parser to content of file
 parseFile :: FilePath                 -- File path to parse
