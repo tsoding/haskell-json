@@ -227,7 +227,7 @@ parseInput :: Input -> Either ParserError JsonValue
 parseInput i = do
   result <- runParser jsonValue i
   case result of
-    ((Input _ ""), jsonValue) -> Right jsonValue
+    ((Input _ ""), v) -> Right v
     ((Input loc str), _) -> Left . ParserError loc $ "unexpected string remaining: " <> str
 
 -- | Apply parser to content of file
