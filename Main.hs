@@ -4,6 +4,7 @@
 module Main where
 
 import           Control.Applicative
+import           Control.Arrow
 import           Data.Char
 import           Numeric
 import           System.Exit
@@ -35,10 +36,7 @@ newtype Parser a = Parser
   }
 
 instance Functor Parser where
-  fmap f (Parser p) =
-    Parser $ \input -> do
-      (input', x) <- p input
-      return (input', f x)
+  fmap f (Parser p) = Parser (fmap (first p) . p)
 
 instance Applicative Parser where
   pure x = Parser $ \input -> Right (input, x)
@@ -55,8 +53,7 @@ instance Alternative (Either ParserError) where
 
 instance Alternative Parser where
   empty = Parser $ const empty
-  (Parser p1) <|> (Parser p2) =
-    Parser $ \input -> p1 input <|> p2 input
+  (Parser p1) <|> (Parser p2) = Parser $ liftA2 (<|>) p1 p2
 
 -- | Parser for null json
 jsonNull :: Parser JsonValue
